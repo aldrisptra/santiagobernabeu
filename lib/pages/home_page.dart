@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../app_state.dart';
+import 'account_pages.dart';
+import 'booking_pages.dart';
+
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, required this.state});
+  final AppState state;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -12,37 +17,44 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = [
-      const BerandaTab(),
-      const _PlaceholderTab(icon: Icons.receipt_long, title: 'Booking Saya'),
-      const _PlaceholderTab(icon: Icons.history, title: 'Riwayat'),
-      const _PlaceholderTab(icon: Icons.person, title: 'Profil'),
-    ];
-
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      body: SafeArea(child: pages[_currentIndex]),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() => _currentIndex = index);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home), label: 'Beranda'),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long),
-            label: 'Booking',
+    return ListenableBuilder(
+      listenable: widget.state,
+      builder: (context, _) => Scaffold(
+        backgroundColor: Colors.grey.shade100,
+        body: SafeArea(
+          child: IndexedStack(
+            index: _currentIndex,
+            children: [
+              BerandaTab(state: widget.state),
+              BookingListTab(state: widget.state),
+              BookingListTab(state: widget.state, history: true),
+              ProfileTab(state: widget.state),
+            ],
           ),
-          NavigationDestination(icon: Icon(Icons.history), label: 'Riwayat'),
-          NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
-        ],
+        ),
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: _currentIndex,
+          onDestinationSelected: (index) {
+            setState(() => _currentIndex = index);
+          },
+          destinations: const [
+            NavigationDestination(icon: Icon(Icons.home), label: 'Beranda'),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long),
+              label: 'Booking',
+            ),
+            NavigationDestination(icon: Icon(Icons.history), label: 'Riwayat'),
+            NavigationDestination(icon: Icon(Icons.person), label: 'Profil'),
+          ],
+        ),
       ),
     );
   }
 }
 
 class BerandaTab extends StatefulWidget {
-  const BerandaTab({super.key});
+  const BerandaTab({super.key, required this.state});
+  final AppState state;
 
   @override
   State<BerandaTab> createState() => _BerandaTabState();
@@ -208,7 +220,8 @@ class _BerandaTabState extends State<BerandaTab> {
           ),
         ),
         IconButton(
-          onPressed: () {},
+          onPressed: () =>
+              Navigator.pushNamed(context, AppRoutes.notifications),
           icon: const Icon(Icons.notifications_none),
         ),
       ],
@@ -272,14 +285,20 @@ class _BerandaTabState extends State<BerandaTab> {
   }
 
   Widget _infoItem(IconData icon, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.blue),
-        const SizedBox(height: 6),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-        const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-      ],
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.blue),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 
@@ -363,7 +382,9 @@ class _BerandaTabState extends State<BerandaTab> {
 
   Widget _buildSlotJam(String jam) {
     // Contoh: hanya hari ini yang punya slot terisi.
-    final terisi = _tanggalDipilih == 0 && _jamTerisi.contains(jam);
+    final terisi =
+        (_tanggalDipilih == 0 && _jamTerisi.contains(jam)) ||
+        widget.state.occupied(_tanggal[_tanggalDipilih], jam);
     final dipilih = _jamDipilih.contains(jam);
 
     Color bg = Colors.white;
@@ -429,47 +450,26 @@ class _BerandaTabState extends State<BerandaTab> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              ScaffoldMessenger.of(this.context).showSnackBar(
-                const SnackBar(content: Text('Booking berhasil dibuat!')),
-              );
+              final booking = widget.state.createBooking(tgl, jam);
+              if (booking == null) {
+                ScaffoldMessenger.of(this.context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Jam sudah terisi. Pilih jadwal lain.'),
+                  ),
+                );
+                return;
+              }
               setState(() => _jamDipilih.clear());
+              Navigator.pushNamed(
+                this.context,
+                AppRoutes.bookingDetail,
+                arguments: booking,
+              );
             },
             child: const Text('Booking'),
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PlaceholderTab extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _PlaceholderTab({required this.icon, required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 64, color: Colors.grey),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Nanti ku buat hehe',
-              style: TextStyle(color: Colors.grey),
-            ),
-          ],
-        ),
-      ],
     );
   }
 }

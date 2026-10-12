@@ -1,170 +1,123 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import 'app_state.dart';
+import 'pages/account_pages.dart';
+import 'pages/booking_pages.dart';
 import 'pages/home_page.dart';
 
-void main() {
-  runApp(const SantiagoBernabeuApp());
+void main() => runApp(const SantiagoBernabeuApp());
+
+class SantiagoBernabeuApp extends StatefulWidget {
+  const SantiagoBernabeuApp({super.key});
+  @override
+  State<SantiagoBernabeuApp> createState() => _SantiagoBernabeuAppState();
 }
 
-class SantiagoBernabeuApp extends StatelessWidget {
-  const SantiagoBernabeuApp({super.key});
+class _SantiagoBernabeuAppState extends State<SantiagoBernabeuApp> {
+  final _state = AppState();
+  @override
+  void dispose() {
+    _state.dispose();
+    super.dispose();
+  }
+
+  Route<dynamic> _route(RouteSettings settings) {
+    final public = {
+      AppRoutes.splash,
+      AppRoutes.login,
+      AppRoutes.register,
+      AppRoutes.forgotPassword,
+    };
+    if (!_state.signedIn && !public.contains(settings.name)) {
+      return MaterialPageRoute(
+        settings: const RouteSettings(name: AppRoutes.login),
+        builder: (_) => AuthPage(state: _state),
+      );
+    }
+    final booking = settings.arguments;
+    final Widget page = switch (settings.name) {
+      AppRoutes.splash => const SplashPage(),
+      AppRoutes.login => AuthPage(state: _state),
+      AppRoutes.register => AuthPage(state: _state, register: true),
+      AppRoutes.forgotPassword => const ForgotPasswordPage(),
+      AppRoutes.home => HomePage(state: _state),
+      AppRoutes.notifications => NotificationsPage(state: _state),
+      AppRoutes.editProfile => EditProfilePage(state: _state),
+      AppRoutes.help => const HelpPage(),
+      AppRoutes.bookingDetail
+          when booking is FieldBooking && _state.bookings.contains(booking) =>
+        BookingDetailPage(state: _state, booking: booking),
+      AppRoutes.payment
+          when booking is FieldBooking &&
+              _state.bookings.contains(booking) &&
+              booking.status == BookingStatus.pending &&
+              !booking.isHistory =>
+        PaymentPage(state: _state, booking: booking),
+      _ => const _RouteErrorPage(),
+    };
+    return MaterialPageRoute(settings: settings, builder: (_) => page);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Santiago Bernabéu',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
+  Widget build(BuildContext context) => MaterialApp(
+    debugShowCheckedModeBanner: false,
+    title: 'Santiago Bernabéu',
+    theme: ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(),
       ),
-      home: const SplashPage(),
-    );
-  }
+      useMaterial3: true,
+    ),
+    initialRoute: AppRoutes.splash,
+    onGenerateRoute: _route,
+  );
 }
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
-
   @override
   State<SplashPage> createState() => _SplashPageState();
 }
 
 class _SplashPageState extends State<SplashPage> {
+  Timer? _timer;
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
-      }
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) Navigator.pushReplacementNamed(context, AppRoutes.login);
     });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                height: 160,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.sports_soccer,
-                    size: 120,
-                    color: Colors.green,
-                  );
-                },
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
   }
-}
-
-class LoginPage extends StatelessWidget {
-  const LoginPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/images/logo.png',
-                height: 120,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.sports_soccer,
-                    size: 100,
-                    color: Colors.green,
-                  );
-                },
-              ),
+  Widget build(BuildContext context) => Scaffold(
+    body: Center(child: Image.asset('assets/images/logo.png', height: 160)),
+  );
+}
 
-              const SizedBox(height: 16),
-
-              const Text(
-                'SANTIAGO BERNABÉU',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              const Text(
-                'Mini Soccer Field',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Nomor Telepon',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              TextField(
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(builder: (context) => const HomePage()),
-                    );
-                  },
-                  child: const Text(
-                    'LOGIN',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              const Text(
-                'Belum memiliki akun? Daftar',
-                style: TextStyle(
-                  color: Colors.green,
-                ),
-              ),
-            ],
-          ),
+class _RouteErrorPage extends StatelessWidget {
+  const _RouteErrorPage();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Halaman tidak tersedia')),
+    body: Center(
+      child: FilledButton(
+        onPressed: () => Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.home,
+          (_) => false,
         ),
-    );
-  }
+        child: const Text('Kembali ke Beranda'),
+      ),
+    ),
+  );
 }
