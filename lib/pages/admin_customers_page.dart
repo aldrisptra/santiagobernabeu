@@ -36,9 +36,7 @@ class _AdminCustomersPageState extends State<AdminCustomersPage> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Daftar ini berasal dari booking demo, bukan database akun.',
-          ),
+
           const SizedBox(height: 20),
           TextField(
             decoration: const InputDecoration(

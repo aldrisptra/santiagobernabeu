@@ -51,7 +51,7 @@ class AdminDashboardPage extends StatelessWidget {
             'Dashboard',
             style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
           ),
-          const Text('Ringkasan pengelolaan lapangan • data demo'),
+          const Text('Ringkasan pengelolaan lapangan'),
           const SizedBox(height: 20),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,11 +72,7 @@ class AdminDashboardPage extends StatelessWidget {
                 '$confirmed',
                 Icons.check_circle_outline,
               ),
-              _summary(
-                'Pendapatan demo',
-                rupiah(revenue),
-                Icons.payments_outlined,
-              ),
+              _summary('Pendapatan', rupiah(revenue), Icons.payments_outlined),
             ],
           ),
           const SizedBox(height: 20),

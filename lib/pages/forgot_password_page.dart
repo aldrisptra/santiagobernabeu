@@ -17,9 +17,7 @@ class ForgotPasswordPage extends StatelessWidget {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
-          Text(
-            'Pemulihan password belum tersedia pada versi demo. Saat layanan akun terhubung, kode verifikasi akan dikirim ke nomor telepon terdaftar. Untuk mencoba navigasi sekarang, kembali ke login dan gunakan nomor telepon serta password minimal 6 karakter.',
-          ),
+          Text('Hubungi pengelola lapangan untuk bantuan pemulihan akun.'),
         ],
       ),
     ),

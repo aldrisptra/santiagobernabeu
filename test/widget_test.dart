@@ -70,7 +70,7 @@ void main() {
     expect(find.text('Total: Rp 250.000'), findsOneWidget);
     await tester.tap(find.text('Lanjut ke pembayaran'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Simulasikan pembayaran berhasil'));
+    await tester.tap(find.text('Konfirmasi pembayaran'));
     await tester.pumpAndSettle();
     expect(find.text('Status: Terkonfirmasi'), findsOneWidget);
     await tester.pageBack();
@@ -150,30 +150,24 @@ void main() {
     await openLogin(tester);
     tester.view.physicalSize = const Size(360, 800);
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Masuk admin demo'));
-    await tester.tap(find.text('Masuk admin demo'));
+    await tester.ensureVisible(find.text('Masuk admin'));
+    await tester.tap(find.text('Masuk admin'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField).at(0), 'admin');
     await tester.enterText(find.byType(TextFormField).at(1), 'wrong');
     await tester.tap(find.text('Masuk dashboard'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Username atau password demo tidak sesuai'),
-      findsOneWidget,
-    );
+    expect(find.text('Username atau password tidak sesuai'), findsOneWidget);
     await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
     await tester.tap(find.text('Masuk dashboard'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Ringkasan pengelolaan lapangan • data demo'),
-      findsOneWidget,
-    );
+    expect(find.text('Ringkasan pengelolaan lapangan'), findsOneWidget);
     await tester.ensureVisible(find.text('Kelola booking'));
     await tester.tap(find.text('Kelola booking'));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('DEMO-001'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Konfirmasi booking demo'));
+    await tester.tap(find.text('Konfirmasi booking'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ya, lanjutkan'));
     await tester.pumpAndSettle();
@@ -198,7 +192,7 @@ void main() {
     await tester.enterText(find.byType(TextFormField).at(0), '300000');
     await tester.tap(find.text('Simpan harga'));
     await tester.pumpAndSettle();
-    expect(find.text('Harga demo berhasil disimpan'), findsOneWidget);
+    expect(find.text('Harga berhasil disimpan'), findsOneWidget);
     await tester.tap(find.byTooltip('Keluar admin'));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));

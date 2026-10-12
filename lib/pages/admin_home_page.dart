@@ -25,9 +25,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Keluar dari admin?'),
-        content: const Text(
-          'Perubahan data demo tetap tersedia selama aplikasi terbuka.',
-        ),
+        content: const Text('Anda akan kembali ke halaman login.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

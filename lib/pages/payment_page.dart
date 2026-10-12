@@ -45,24 +45,17 @@ class _PaymentPageState extends State<PaymentPage> {
           onChanged: (value) => setState(() => _method = value!),
         ),
         const SizedBox(height: 24),
-        const Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              'Simulasi pembayaran: belum ada rekening, kode QR, atau gateway pembayaran. Jangan melakukan transfer. Tombol berikut hanya mengubah status booking demo.',
-            ),
-          ),
-        ),
+
         const SizedBox(height: 20),
         FilledButton(
           onPressed: () {
             widget.data.confirmPayment(widget.booking);
             Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Simulasi pembayaran berhasil')),
+              const SnackBar(content: Text('Status pembayaran diperbarui')),
             );
           },
-          child: const Text('Simulasikan pembayaran berhasil'),
+          child: const Text('Konfirmasi pembayaran'),
         ),
       ],
     ),

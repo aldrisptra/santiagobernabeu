@@ -16,7 +16,7 @@ class HelpPage extends StatelessWidget {
           ),
           SizedBox(height: 12),
           Text(
-            '1. Pilih tanggal di Beranda.\n2. Pilih satu atau beberapa jam yang tersedia.\n3. Konfirmasi booking dan buka detailnya.\n4. Pilih pembayaran untuk mencoba alur konfirmasi.',
+            '1. Pilih tanggal di Beranda.\n2. Pilih satu atau beberapa jam yang tersedia.\n3. Konfirmasi booking dan buka detailnya.\n4. Pilih pembayaran untuk melanjutkan konfirmasi.',
           ),
           SizedBox(height: 24),
           Text(
@@ -26,15 +26,6 @@ class HelpPage extends StatelessWidget {
           SizedBox(height: 12),
           Text(
             'Buka 08.00–23.00.\nHarga terbaru dapat dilihat di Beranda.\nTarif malam berlaku mulai pukul 17.00.\nSetiap slot menunjukkan jam mulai dengan durasi satu jam.',
-          ),
-          SizedBox(height: 24),
-          Text(
-            'Tentang versi demo',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          SizedBox(height: 12),
-          Text(
-            'Login, pendaftaran, booking, profil, dan pembayaran belum terhubung ke server. Data akan hilang ketika aplikasi ditutup atau akun keluar. Notifikasi menampilkan status booking demo. Pemulihan password dan pembayaran sungguhan memerlukan backend.',
           ),
         ],
       ),

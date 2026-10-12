@@ -42,9 +42,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     widget.data.dayPrice = int.parse(_day.text);
     widget.data.nightPrice = int.parse(_night.text);
     widget.onChanged();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Harga demo berhasil disimpan')),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Harga berhasil disimpan')));
   }
 
   @override
@@ -101,9 +100,6 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           'Operasional: 08.00–23.00. Tarif malam mulai 17.00. Gunakan tab Jadwal untuk membuka atau menutup slot.',
         ),
         const SizedBox(height: 16),
-        const Text(
-          'Pengaturan belum disimpan ke database dan akan kembali ke awal setelah aplikasi ditutup.',
-        ),
       ],
     ),
   );

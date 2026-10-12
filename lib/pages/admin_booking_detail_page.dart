@@ -20,10 +20,10 @@ class _AdminBookingDetailPageState extends State<AdminBookingDetailPage> {
     final agree = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(confirm ? 'Konfirmasi booking demo?' : 'Batalkan booking?'),
+        title: Text(confirm ? 'Konfirmasi booking?' : 'Batalkan booking?'),
         content: Text(
           confirm
-              ? 'Status diubah tanpa memeriksa pembayaran sungguhan.'
+              ? 'Ubah status booking menjadi terkonfirmasi?'
               : 'Slot booking akan tersedia kembali.',
         ),
         actions: [
@@ -94,7 +94,7 @@ class _AdminBookingDetailPageState extends State<AdminBookingDetailPage> {
             if (!booking.isHistory && booking.status == BookingStatus.pending)
               FilledButton(
                 onPressed: () => _changeStatus(true),
-                child: const Text('Konfirmasi booking demo'),
+                child: const Text('Konfirmasi booking'),
               ),
             if (!booking.isHistory && booking.status != BookingStatus.cancelled)
               OutlinedButton(
@@ -102,9 +102,6 @@ class _AdminBookingDetailPageState extends State<AdminBookingDetailPage> {
                 child: const Text('Batalkan booking'),
               ),
             const SizedBox(height: 16),
-            const Text(
-              'Perubahan hanya berlaku pada data demo selama aplikasi terbuka.',
-            ),
           ],
         ),
       ),

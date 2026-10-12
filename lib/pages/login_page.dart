@@ -146,15 +146,7 @@ class _LoginPageState extends State<LoginPage> {
                                 icon: const Icon(
                                   Icons.admin_panel_settings_outlined,
                                 ),
-                                label: const Text('Masuk admin demo'),
-                              ),
-                              const Text(
-                                'Mode demo: akun belum terhubung ke server. Data hanya tersimpan selama aplikasi terbuka.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 12,
-                                ),
+                                label: const Text('Masuk admin'),
                               ),
                             ],
                           ),

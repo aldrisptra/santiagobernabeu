@@ -122,11 +122,6 @@ class _RegisterPageState extends State<RegisterPage> {
                           onPressed: () => Navigator.pop(context),
                           child: const Text('Sudah punya akun? Login'),
                         ),
-                        const Text(
-                          'Mode demo: akun belum terhubung ke server. Data hanya tersimpan selama aplikasi terbuka.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey, fontSize: 12),
-                        ),
                       ],
                     ),
                   ),

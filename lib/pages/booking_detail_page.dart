@@ -105,11 +105,6 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
             child: const Text('Batalkan booking'),
           ),
         ],
-        if (booking.status == BookingStatus.confirmed)
-          const Text(
-            'Booking terkonfirmasi dalam mode demo. Ini bukan bukti pembayaran atau reservasi lapangan sungguhan.',
-            textAlign: TextAlign.center,
-          ),
       ],
     ),
   );

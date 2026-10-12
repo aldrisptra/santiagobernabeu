@@ -25,7 +25,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
   void _login() {
     if (!_form.currentState!.validate()) return;
     if (_username.text.trim() != 'admin' || _password.text != 'admin123') {
-      setState(() => _error = 'Username atau password demo tidak sesuai');
+      setState(() => _error = 'Username atau password tidak sesuai');
       return;
     }
     widget.data.prepareAdminDemo();
@@ -59,9 +59,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          const Text(
-            'UI demo admin. Gunakan username admin dan password admin123. Belum ada autentikasi atau database.',
-          ),
+          const Text('Masukkan username dan password admin.'),
           const SizedBox(height: 24),
           Form(
             key: _form,

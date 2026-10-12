@@ -78,7 +78,7 @@ class ProfilePage extends StatelessWidget {
             builder: (context) => AlertDialog(
               title: const Text('Keluar dari akun?'),
               content: const Text(
-                'Data booking demo akan dihapus saat keluar.',
+                'Keluar dari akun dan kembali ke halaman login?',
               ),
               actions: [
                 TextButton(

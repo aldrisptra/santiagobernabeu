@@ -92,9 +92,7 @@ class _AdminSchedulePageState extends State<AdminSchedulePage> {
             ),
           ),
         const SizedBox(height: 12),
-        const Text(
-          'Sakelar aktif = slot dibuka. Jadwal ini menggunakan data demo.',
-        ),
+        const Text('Sakelar aktif = slot dibuka.'),
       ],
     ),
   );
