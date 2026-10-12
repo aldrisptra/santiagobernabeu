@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:santiago_bernabeu/app_state.dart';
+import 'package:santiago_bernabeu/data/demo_data.dart';
 import 'package:santiago_bernabeu/main.dart';
 
 Future<void> openLogin(WidgetTester tester) async {
@@ -103,8 +103,47 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Cancellation refreshes notifications and history', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await login(tester);
+    await tester.ensureVisible(find.text('09:00'));
+    await tester.tap(find.text('09:00'));
+    await tester.pumpAndSettle();
+    final button = find.text('BOOKING 1 JAM • Rp 250.000');
+    await tester.ensureVisible(button);
+    await tester.tap(button);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Booking'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.person).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notifikasi'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Menunggu pembayaran'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Batalkan booking'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Batalkan booking'));
+    await tester.pumpAndSettle();
+    expect(find.text('Status: Dibatalkan'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.text('Dibatalkan'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.history));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Dibatalkan'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('Booking prevents overlapping slots and cancellation frees them', () {
-    final state = AppState();
+    final state = DemoData();
     final now = DateTime.now();
     final date = DateTime(now.year, now.month, now.day);
     final booking = state.createBooking(date, ['08:00', '19:00'])!;
@@ -116,6 +155,5 @@ void main() {
     expect(state.createBooking(date, ['08:00']), isNotNull);
     state.signOut();
     expect(state.bookings, isEmpty);
-    state.dispose();
   });
 }

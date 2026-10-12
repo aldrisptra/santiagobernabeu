@@ -1,0 +1,43 @@
+import 'package:flutter/material.dart';
+
+class HelpPage extends StatelessWidget {
+  const HelpPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Bantuan & informasi')),
+    body: const SingleChildScrollView(
+      padding: EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Cara booking',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          Text(
+            '1. Pilih tanggal di Beranda.\n2. Pilih satu atau beberapa jam yang tersedia.\n3. Konfirmasi booking dan buka detailnya.\n4. Pilih pembayaran untuk mencoba alur konfirmasi.',
+          ),
+          SizedBox(height: 24),
+          Text(
+            'Informasi lapangan',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Buka 08.00–23.00.\nHarga siang Rp 250.000/jam.\nHarga malam mulai pukul 17.00 Rp 350.000/jam.\nSetiap slot menunjukkan jam mulai dengan durasi satu jam.',
+          ),
+          SizedBox(height: 24),
+          Text(
+            'Tentang versi demo',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          Text(
+            'Login, pendaftaran, booking, profil, dan pembayaran belum terhubung ke server. Data akan hilang ketika aplikasi ditutup atau akun keluar. Notifikasi menampilkan status booking demo. Pemulihan password dan pembayaran sungguhan memerlukan backend.',
+          ),
+        ],
+      ),
+    ),
+  );
+}

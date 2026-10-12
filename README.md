@@ -21,9 +21,22 @@ samples, guidance on mobile development, and a full API reference.
 Splash → Login / Daftar → Beranda → Detail Booking → Pembayaran.
 Tab utama: Beranda, Booking Saya, Riwayat, dan Profil.
 Profil menyediakan Edit Profil, Notifikasi, Bantuan, dan Keluar.
-Rute bernama didefinisikan dalam `lib/app_state.dart` dan didaftarkan di
-`lib/main.dart`; rute booking memerlukan objek `FieldBooking` sebagai argumen.
-Rute pelanggan memerlukan sesi login demo.
+Perpindahan halaman memakai `Navigator.push`, `Navigator.pop`, dan
+`MaterialPageRoute`. Setelah login/daftar, stack halaman dibersihkan supaya
+tombol kembali tidak membawa pengguna ke form login.
+
+Struktur kode:
+- `lib/main.dart`: menjalankan aplikasi dan mengatur tema.
+- `lib/models/booking.dart`: model booking, harga, dan status.
+- `lib/data/demo_data.dart`: data demo, format rupiah, dan validasi form.
+- `lib/pages/`: satu file untuk setiap halaman (splash, login, daftar,
+  beranda, booking, detail booking, pembayaran, riwayat, profil, edit profil,
+  notifikasi, lupa password, dan bantuan).
+
+Data demo dibagikan lewat constructor. Tampilan diperbarui dengan `setState`
+setelah kembali dari halaman yang mengubah data. Layout menggunakan `Row`,
+`Column`, `Padding`, dan `SizedBox`, tanpa widget `Center`. Halaman panjang
+tetap dapat digulir dengan `SingleChildScrollView` atau `ListView`.
 
 Versi ini adalah prototipe: login/daftar belum memverifikasi akun melalui server,
 pembayaran hanya simulasi, dan data booking/profil tersimpan dalam memori.
