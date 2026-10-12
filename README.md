@@ -53,3 +53,23 @@ flutter run
 Untuk mencoba di HP tanpa membuka Android Studio, aktifkan USB debugging,
 hubungkan HP ke komputer lokal, lalu gunakan `flutter devices` dan `flutter run`.
 Flutter SDK dan Android SDK tetap diperlukan pada komputer lokal.
+
+## UI admin (demo)
+
+Dari halaman login pelanggan, pilih **Masuk admin demo**.
+Gunakan username `admin` dan password `admin123` untuk mencoba UI.
+Ini hanya pemeriksaan lokal untuk demo, bukan autentikasi admin sungguhan.
+
+Halaman admin dipisah dalam file `lib/pages/admin_*.dart`:
+- Dashboard: ringkasan booking dan pendapatan demo.
+- Booking: pencarian, filter status, detail, konfirmasi dan pembatalan.
+- Jadwal: pilih tanggal dan buka/tutup slot lapangan.
+- Pelanggan: nama, nomor telepon dan jumlah booking; pencarian pelanggan.
+- Pengaturan: harga siang dan malam untuk booking baru.
+
+Saat masuk admin tanpa booking, tiga contoh booking ditambahkan untuk mencoba UI.
+Perubahan admin dan pelanggan memakai objek `DemoData` yang sama selama aplikasi
+terbuka. Keluar admin kembali ke login pelanggan tanpa menghapus perubahan.
+Slot yang sudah dipesan tidak dapat ditutup melalui Jadwal; batalkan booking dulu.
+Perubahan harga tidak mengubah total booking yang sudah dibuat.
+Database, verifikasi pembayaran, dan otorisasi server belum diimplementasikan.

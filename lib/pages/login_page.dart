@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/demo_data.dart';
 import 'home_page.dart';
+import 'admin_login_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
 
@@ -133,6 +134,19 @@ class _LoginPageState extends State<LoginPage> {
                                 child: const Text(
                                   'Belum memiliki akun? Daftar',
                                 ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () => Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        AdminLoginPage(data: widget.data),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                  Icons.admin_panel_settings_outlined,
+                                ),
+                                label: const Text('Masuk admin demo'),
                               ),
                               const Text(
                                 'Mode demo: akun belum terhubung ke server. Data hanya tersimpan selama aplikasi terbuka.',

@@ -25,7 +25,7 @@ class HelpPage extends StatelessWidget {
           ),
           SizedBox(height: 12),
           Text(
-            'Buka 08.00–23.00.\nHarga siang Rp 250.000/jam.\nHarga malam mulai pukul 17.00 Rp 350.000/jam.\nSetiap slot menunjukkan jam mulai dengan durasi satu jam.',
+            'Buka 08.00–23.00.\nHarga terbaru dapat dilihat di Beranda.\nTarif malam berlaku mulai pukul 17.00.\nSetiap slot menunjukkan jam mulai dengan durasi satu jam.',
           ),
           SizedBox(height: 24),
           Text(

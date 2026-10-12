@@ -5,6 +5,73 @@ class DemoData {
   String name = 'Pemain';
   String phone = '';
   bool signedIn = false;
+  int dayPrice = 250000;
+  int nightPrice = 350000;
+  static const hours = [
+    '08:00',
+    '09:00',
+    '10:00',
+    '11:00',
+    '13:00',
+    '14:00',
+    '15:00',
+    '16:00',
+    '19:00',
+    '20:00',
+    '21:00',
+    '22:00',
+  ];
+  final Map<String, Set<String>> blockedSlots = {};
+
+  int pricePerHour(String hour) {
+    return int.parse(hour.substring(0, 2)) >= 17 ? nightPrice : dayPrice;
+  }
+
+  bool blocked(DateTime date, String hour) {
+    return blockedSlots[bookingDate(date)]?.contains(hour) ?? false;
+  }
+
+  void toggleSlot(DateTime date, String hour) {
+    final slots = blockedSlots.putIfAbsent(bookingDate(date), () => {});
+    if (!slots.remove(hour)) slots.add(hour);
+  }
+
+  // Contoh data untuk mencoba UI admin tanpa database.
+  void prepareAdminDemo() {
+    if (_bookings.isNotEmpty) return;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    _bookings.addAll([
+      FieldBooking(
+        id: 'DEMO-001',
+        date: today,
+        hours: ['08:00'],
+        customerName: 'Budi',
+        customerPhone: '081234567801',
+        dayPrice: dayPrice,
+        nightPrice: nightPrice,
+      ),
+      FieldBooking(
+        id: 'DEMO-002',
+        date: today.add(const Duration(days: 1)),
+        hours: ['19:00'],
+        customerName: 'Sinta',
+        customerPhone: '081234567802',
+        dayPrice: dayPrice,
+        nightPrice: nightPrice,
+      )..status = BookingStatus.confirmed,
+      FieldBooking(
+        id: 'DEMO-003',
+        date: today.subtract(const Duration(days: 1)),
+        hours: ['09:00'],
+        customerName: 'Budi',
+        customerPhone: '081234567801',
+        dayPrice: dayPrice,
+        nightPrice: nightPrice,
+      )..status = BookingStatus.confirmed,
+    ]);
+  }
+
   final List<FieldBooking> _bookings = [];
   List<FieldBooking> get bookings => List.unmodifiable(_bookings);
   void signIn(String number, {String? displayName}) {
@@ -39,10 +106,14 @@ class DemoData {
   FieldBooking? createBooking(DateTime date, List<String> hours) {
     if (hours.isEmpty) return null;
     for (final hour in hours) {
-      if (occupied(date, hour)) return null;
+      if (occupied(date, hour) || blocked(date, hour)) return null;
     }
     final booking = FieldBooking(
       id: 'SB-${DateTime.now().microsecondsSinceEpoch}',
+      customerName: name,
+      customerPhone: phone,
+      dayPrice: dayPrice,
+      nightPrice: nightPrice,
       date: date,
       hours: List.unmodifiable(hours),
     );

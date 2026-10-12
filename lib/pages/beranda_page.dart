@@ -31,21 +31,7 @@ class _BerandaPageState extends State<BerandaPage> {
   ];
 
   // Data dummy, nanti diganti dengan data dari backend.
-  static const _jamOperasional = [
-    '08:00',
-    '09:00',
-    '10:00',
-    '11:00',
-    '13:00',
-    '14:00',
-    '15:00',
-    '16:00',
-    '19:00',
-    '20:00',
-    '21:00',
-    '22:00',
-  ];
-  static const _jamTerisi = {'10:00', '16:00', '20:00'};
+  static const _jamOperasional = DemoData.hours;
 
   late final List<DateTime> _tanggal;
   int _tanggalDipilih = 0;
@@ -63,8 +49,7 @@ class _BerandaPageState extends State<BerandaPage> {
   }
 
   int _hargaPerJam(String jam) {
-    final hour = int.parse(jam.substring(0, 2));
-    return hour >= 17 ? 350000 : 250000;
+    return widget.data.pricePerHour(jam);
   }
 
   String _formatRupiah(int nilai) {
@@ -234,8 +219,16 @@ class _BerandaPageState extends State<BerandaPage> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _infoItem(Icons.access_time, 'Buka', '08.00 - 23.00'),
-          _infoItem(Icons.wb_sunny_outlined, 'Siang', _formatRupiah(250000)),
-          _infoItem(Icons.nightlight_outlined, 'Malam', _formatRupiah(350000)),
+          _infoItem(
+            Icons.wb_sunny_outlined,
+            'Siang',
+            _formatRupiah(widget.data.dayPrice),
+          ),
+          _infoItem(
+            Icons.nightlight_outlined,
+            'Malam',
+            _formatRupiah(widget.data.nightPrice),
+          ),
         ],
       ),
     );
@@ -340,7 +333,7 @@ class _BerandaPageState extends State<BerandaPage> {
   Widget _buildSlotJam(String jam) {
     // Contoh: hanya hari ini yang punya slot terisi.
     final terisi =
-        (_tanggalDipilih == 0 && _jamTerisi.contains(jam)) ||
+        widget.data.blocked(_tanggal[_tanggalDipilih], jam) ||
         widget.data.occupied(_tanggal[_tanggalDipilih], jam);
     final dipilih = _jamDipilih.contains(jam);
 

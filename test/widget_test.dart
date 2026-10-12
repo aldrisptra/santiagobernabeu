@@ -142,6 +142,94 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Admin manages bookings, slots and prices without a database', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await openLogin(tester);
+    tester.view.physicalSize = const Size(360, 800);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Masuk admin demo'));
+    await tester.tap(find.text('Masuk admin demo'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), 'admin');
+    await tester.enterText(find.byType(TextFormField).at(1), 'wrong');
+    await tester.tap(find.text('Masuk dashboard'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Username atau password demo tidak sesuai'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
+    await tester.tap(find.text('Masuk dashboard'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Ringkasan pengelolaan lapangan • data demo'),
+      findsOneWidget,
+    );
+    await tester.ensureVisible(find.text('Kelola booking'));
+    await tester.tap(find.text('Kelola booking'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('DEMO-001'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Konfirmasi booking demo'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ya, lanjutkan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Status: Terkonfirmasi'), findsOneWidget);
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Jadwal'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Switch>(find.byType(Switch).first).onChanged, isNull);
+    await tester.tap(find.byType(Switch).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('Ditutup admin'), findsOneWidget);
+    await tester.tap(find.text('Pelanggan'));
+    await tester.pumpAndSettle();
+    expect(find.text('Budi'), findsOneWidget);
+    expect(find.text('Sinta'), findsOneWidget);
+    await tester.enterText(find.byType(TextField).first, 'Sinta');
+    await tester.pumpAndSettle();
+    expect(find.text('Budi'), findsNothing);
+    await tester.tap(find.text('Pengaturan'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextFormField).at(0), '300000');
+    await tester.tap(find.text('Simpan harga'));
+    await tester.pumpAndSettle();
+    expect(find.text('Harga demo berhasil disimpan'), findsOneWidget);
+    await tester.tap(find.byTooltip('Keluar admin'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
+    await tester.pumpAndSettle();
+    expect(find.text('LOGIN'), findsOneWidget);
+    await tester.enterText(find.byType(TextFormField).at(0), '081234567890');
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.text('LOGIN'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('11:00'));
+    await tester.tap(find.text('11:00'));
+    await tester.pumpAndSettle();
+    expect(find.text('BOOKING 1 JAM • Rp 300.000'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  test(
+    'Admin closure rejects booking and price edits preserve existing totals',
+    () {
+      final data = DemoData();
+      final date = DateTime(2026, 10, 20);
+      final booking = data.createBooking(date, ['08:00'])!;
+      data.dayPrice = 300000;
+      expect(booking.total, 250000);
+      data.toggleSlot(date, '09:00');
+      expect(data.createBooking(date, ['09:00']), isNull);
+      data.toggleSlot(date, '09:00');
+      expect(data.createBooking(date, ['09:00'])!.total, 300000);
+    },
+  );
+
   test('Booking prevents overlapping slots and cancellation frees them', () {
     final state = DemoData();
     final now = DateTime.now();
