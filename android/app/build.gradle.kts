@@ -1,7 +1,20 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+val releaseProperties = Properties()
+val releasePropertiesFile = rootProject.file("key.properties")
+if (releasePropertiesFile.exists()) {
+    releasePropertiesFile.inputStream().use { releaseProperties.load(it) }
+}
+val buildingRelease = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+if (buildingRelease && (!releasePropertiesFile.exists() ||
+    listOf("storeFile", "storePassword", "keyAlias", "keyPassword").any { releaseProperties.getProperty(it).isNullOrBlank() })) {
+    throw GradleException("Release requires android/key.properties with upload keystore. See docs/RELEASE.md.")
 }
 
 android {
@@ -15,8 +28,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.santiago_bernabeu"
+        applicationId = "id.santiagobernabeu.booking"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -29,11 +41,20 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (releasePropertiesFile.exists()) {
+            create("upload") {
+                storeFile = rootProject.file(releaseProperties.getProperty("storeFile"))
+                storePassword = releaseProperties.getProperty("storePassword")
+                keyAlias = releaseProperties.getProperty("keyAlias")
+                keyPassword = releaseProperties.getProperty("keyPassword")
+            }
+        }
+    }
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Production releases require the owner's upload key.
+            if (releasePropertiesFile.exists()) signingConfig = signingConfigs.getByName("upload")
         }
     }
 }

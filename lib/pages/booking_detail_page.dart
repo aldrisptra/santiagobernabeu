@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/demo_data.dart';
 import '../models/booking.dart';
 import 'payment_page.dart';
+import '../services/booking_api.dart';
 
 class BookingDetailPage extends StatefulWidget {
   const BookingDetailPage({
@@ -19,6 +20,7 @@ class BookingDetailPage extends StatefulWidget {
 class _BookingDetailPageState extends State<BookingDetailPage> {
   FieldBooking get booking => widget.booking;
   DemoData get data => widget.data;
+  bool _busy = false;
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('Detail Booking')),
@@ -51,6 +53,8 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
                 Text('Durasi: ${booking.hours.length} jam'),
                 const SizedBox(height: 12),
                 Text('Status: ${booking.statusLabel}'),
+                const SizedBox(height: 12),
+                Text(booking.paymentLabel),
                 const Divider(height: 28),
                 Text(
                   'Total: ${rupiah(booking.total)}',
@@ -66,42 +70,57 @@ class _BookingDetailPageState extends State<BookingDetailPage> {
         const SizedBox(height: 24),
         if (booking.status == BookingStatus.pending && !booking.isHistory) ...[
           FilledButton(
-            onPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PaymentPage(data: data, booking: booking),
-                ),
-              );
-              if (mounted) setState(() {});
-            },
+            onPressed: _busy
+                ? null
+                : () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            PaymentPage(data: data, booking: booking),
+                      ),
+                    );
+                    if (mounted) setState(() {});
+                  },
             child: const Text('Lanjut ke pembayaran'),
           ),
           TextButton(
-            onPressed: () async {
-              final cancel = await showDialog<bool>(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: const Text('Batalkan booking?'),
-                  content: const Text(
-                    'Jam yang dipilih akan tersedia kembali.',
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Kembali'),
-                    ),
-                    FilledButton(
-                      onPressed: () => Navigator.pop(context, true),
-                      child: const Text('Batalkan booking'),
-                    ),
-                  ],
-                ),
-              );
-              if (cancel == true && mounted) {
-                setState(() => data.cancel(booking));
-              }
-            },
+            onPressed: _busy || booking.paymentStatus == 'submitted'
+                ? null
+                : () async {
+                    final cancel = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Batalkan booking?'),
+                        content: const Text(
+                          'Jam yang dipilih akan tersedia kembali.',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Kembali'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text('Batalkan booking'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (cancel == true && mounted) {
+                      setState(() => _busy = true);
+                      try {
+                        await data.cancel(booking);
+                      } on BookingApiException catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(SnackBar(content: Text(e.message)));
+                        }
+                      } finally {
+                        if (mounted) setState(() => _busy = false);
+                      }
+                    }
+                  },
             child: const Text('Batalkan booking'),
           ),
         ],

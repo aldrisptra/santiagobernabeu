@@ -5,6 +5,8 @@ import 'edit_profile_page.dart';
 import 'notifications_page.dart';
 import 'help_page.dart';
 import 'login_page.dart';
+import '../services/booking_api.dart';
+import 'privacy_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key, required this.data, required this.onChanged});
@@ -57,6 +59,62 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             ListTile(
+              leading: const Icon(Icons.privacy_tip_outlined),
+              title: const Text('Kebijakan privasi'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PrivacyPage()),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: const Text('Hapus akun'),
+              onTap: () async {
+                final agree = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Ajukan penghapusan akun?'),
+                    content: const Text(
+                      'Akun, profil, booking, dan bukti transfer akan dihapus permanen. Permintaan diproses oleh pengelola. Jangan melakukan transfer baru setelah mengajukan penghapusan. Hubungi pengelola untuk menyelesaikan pembayaran atau pengembalian dana yang masih berjalan.',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Batal'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Ajukan penghapusan'),
+                      ),
+                    ],
+                  ),
+                );
+                if (agree != true || !context.mounted) return;
+                try {
+                  await data.bookingApi.requestAccountDeletion();
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Permintaan penghapusan akun tercatat.'),
+                    ),
+                  );
+                  await data.signOut();
+                  if (context.mounted) {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(builder: (_) => LoginPage(data: data)),
+                      (_) => false,
+                    );
+                  }
+                } on BookingApiException catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(SnackBar(content: Text(e.message)));
+                  }
+                }
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.help_outline),
               title: const Text('Bantuan & informasi'),
               trailing: const Icon(Icons.chevron_right),
@@ -93,7 +151,16 @@ class ProfilePage extends StatelessWidget {
             ),
           );
           if (confirmed != true || !context.mounted) return;
-          data.signOut();
+          try {
+            await data.signOut();
+          } on BookingApiException catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(e.message)));
+            }
+            return;
+          }
+          if (!context.mounted) return;
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(builder: (_) => LoginPage(data: data)),

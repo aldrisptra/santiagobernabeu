@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/demo_data.dart';
+import '../services/booking_api.dart';
 
 class AdminSchedulePage extends StatefulWidget {
   const AdminSchedulePage({super.key, required this.data});
@@ -11,11 +12,39 @@ class AdminSchedulePage extends StatefulWidget {
 
 class _AdminSchedulePageState extends State<AdminSchedulePage> {
   late DateTime _date;
+  bool _busy = true;
+  String? _error;
+  Future<void> _load() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.data.loadAvailability(_date);
+    } on BookingApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _toggle(String hour) async {
+    setState(() => _busy = true);
+    try {
+      await widget.data.toggleSlot(_date, hour);
+    } on BookingApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
     _date = DateTime(now.year, now.month, now.day);
+    _load();
   }
 
   Future<void> _pickDate() async {
@@ -26,7 +55,10 @@ class _AdminSchedulePageState extends State<AdminSchedulePage> {
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: DateTime(now.year + 1, now.month, now.day),
     );
-    if (selected != null && mounted) setState(() => _date = selected);
+    if (selected != null && mounted) {
+      setState(() => _date = selected);
+      await _load();
+    }
   }
 
   @override
@@ -45,11 +77,16 @@ class _AdminSchedulePageState extends State<AdminSchedulePage> {
         ),
         const SizedBox(height: 16),
         OutlinedButton.icon(
-          onPressed: _pickDate,
+          onPressed: _busy ? null : _pickDate,
           icon: const Icon(Icons.calendar_month),
           label: Text('Tanggal: ${bookingDate(_date)}'),
         ),
         const SizedBox(height: 16),
+        if (_busy) const LinearProgressIndicator(),
+        if (_error != null) ...[
+          Text(_error!),
+          TextButton(onPressed: _load, child: const Text('Coba lagi')),
+        ],
         for (final hour in DemoData.hours)
           Card(
             child: Padding(
@@ -81,11 +118,12 @@ class _AdminSchedulePageState extends State<AdminSchedulePage> {
                   ),
                   Switch(
                     value: !widget.data.blocked(_date, hour),
-                    onChanged: widget.data.occupied(_date, hour)
+                    onChanged:
+                        _busy ||
+                            _error != null ||
+                            widget.data.occupied(_date, hour)
                         ? null
-                        : (_) => setState(
-                            () => widget.data.toggleSlot(_date, hour),
-                          ),
+                        : (_) => _toggle(hour),
                   ),
                 ],
               ),

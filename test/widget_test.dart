@@ -1,241 +1,195 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:santiago_bernabeu/data/demo_data.dart';
 import 'package:santiago_bernabeu/main.dart';
+import 'package:santiago_bernabeu/models/booking.dart';
+import 'package:santiago_bernabeu/services/booking_api.dart';
+import 'package:santiago_bernabeu/pages/payment_page.dart';
+import 'package:santiago_bernabeu/data/demo_data.dart';
 
-Future<void> openLogin(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(430, 932);
+class CustomerApi extends BookingApi {
+  final records = <FieldBooking>[];
+  bool loggedIn = false, failCreate = false;
+  String? requestId;
+  @override
+  bool get isConfigured => true;
+  @override
+  Future<void> signInCustomer(String email, String password) async {
+    if (password != 'password') {
+      throw const BookingApiException('Email atau password tidak sesuai.');
+    }
+    loggedIn = true;
+  }
+
+  @override
+  Future<Map<String, dynamic>> loadProfile() async => {
+    'name': 'Tim Santiago',
+    'phone': '081234567890',
+  };
+  @override
+  Future<Map<String, dynamic>> fetchSettings() async => {
+    'day_price': 250000,
+    'night_price': 350000,
+    'bank_name': 'Bank Uji',
+    'bank_account': '123456',
+    'bank_holder': 'Pengelola',
+  };
+  @override
+  Future<List<FieldBooking>> fetchBookings() async => List.of(records);
+  @override
+  Future<List<FieldBooking>> fetchMyBookings() async => List.of(records);
+  @override
+  Future<List<Map<String, dynamic>>> availability(DateTime date) async => [
+    for (final h in DemoData.hours)
+      {'hour': h, 'closed': false, 'occupied': false},
+  ];
+  @override
+  Future<FieldBooking> createCustomerBooking(
+    DateTime date,
+    List<String> hours,
+    String requestId,
+  ) async {
+    this.requestId = requestId;
+    if (failCreate) throw const BookingApiException('Koneksi terputus');
+    final booking = FieldBooking(id: 'SB-TEST', date: date, hours: hours);
+    records.add(booking);
+    return booking;
+  }
+
+  @override
+  Future<FieldBooking> cancelCustomerBooking(String id) async {
+    final b = records.singleWhere((b) => b.id == id);
+    b.status = BookingStatus.cancelled;
+    return b;
+  }
+
+  @override
+  Future<void> signOutAdmin() async {
+    loggedIn = false;
+  }
+
+  @override
+  Future<FieldBooking> uploadPayment(
+    String id,
+    Uint8List bytes,
+    String extension,
+  ) async => throw UnimplementedError();
+}
+
+Future<void> openLogin(WidgetTester tester, {BookingApi? api}) async {
+  tester.view.physicalSize = const Size(430, 1000);
   tester.view.devicePixelRatio = 1;
-  await tester.pumpWidget(const SantiagoBernabeuApp());
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpWidget(SantiagoBernabeuApp(bookingApi: api));
   await tester.pump(const Duration(seconds: 2));
   await tester.pumpAndSettle();
 }
 
-Future<void> login(WidgetTester tester) async {
-  await openLogin(tester);
-  await tester.enterText(find.byType(TextFormField).at(0), '081234567890');
-  await tester.enterText(find.byType(TextFormField).at(1), 'password');
-  await tester.tap(find.text('LOGIN'));
-  await tester.pumpAndSettle();
-}
-
 void main() {
-  testWidgets('Splash routes to login and forms reject empty values', (
-    tester,
-  ) async {
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await openLogin(tester);
-    expect(find.text('SANTIAGO BERNABÉU'), findsOneWidget);
-    expect(find.byType(TextFormField), findsNWidgets(2));
-    await tester.tap(find.text('LOGIN'));
-    await tester.pumpAndSettle();
-    expect(find.text('Masukkan nomor telepon yang valid'), findsOneWidget);
-    expect(find.text('Minimal 6 karakter'), findsOneWidget);
-    await tester.tap(find.text('Lupa password?'));
-    await tester.pumpAndSettle();
-    expect(find.text('Pemulihan akun'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Belum memiliki akun? Daftar'));
-    await tester.pumpAndSettle();
-    expect(find.byType(TextFormField), findsNWidgets(4));
-    await tester.enterText(find.byType(TextFormField).at(0), 'Tim Santiago');
-    await tester.enterText(find.byType(TextFormField).at(1), '081234567890');
-    await tester.enterText(find.byType(TextFormField).at(2), 'password');
-    await tester.enterText(find.byType(TextFormField).at(3), 'password');
-    await tester.ensureVisible(find.text('DAFTAR'));
-    await tester.tap(find.text('DAFTAR'));
-    await tester.pumpAndSettle();
-    expect(find.text('Pilih Tanggal'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Booking routes to payment, notifications, profile and logout', (
-    tester,
-  ) async {
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await login(tester);
-    await tester.ensureVisible(find.text('08:00'));
-    await tester.tap(find.text('08:00'));
-    await tester.pumpAndSettle();
-    final bookingButton = find.text('BOOKING 1 JAM • Rp 250.000');
-    await tester.ensureVisible(bookingButton);
-    await tester.tap(bookingButton);
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Booking'));
-    await tester.pumpAndSettle();
-    expect(find.text('Detail Booking'), findsOneWidget);
-    expect(find.text('Total: Rp 250.000'), findsOneWidget);
-    await tester.tap(find.text('Lanjut ke pembayaran'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Konfirmasi pembayaran'));
-    await tester.pumpAndSettle();
-    expect(find.text('Status: Terkonfirmasi'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.receipt_long));
-    await tester.pumpAndSettle();
-    expect(find.text('Booking Saya'), findsOneWidget);
-    expect(find.textContaining('Terkonfirmasi'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.history));
-    await tester.pumpAndSettle();
-    expect(find.text('Belum ada riwayat booking'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.person).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notifikasi'));
-    await tester.pumpAndSettle();
-    expect(find.text('Terkonfirmasi'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Edit profil'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).first, 'Tim Baru');
-    await tester.tap(find.text('Simpan profil'));
-    await tester.pumpAndSettle();
-    expect(find.text('Tim Baru'), findsOneWidget);
-    await tester.tap(find.text('Keluar'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
-    await tester.pumpAndSettle();
-    expect(find.text('LOGIN'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Cancellation refreshes notifications and history', (
-    tester,
-  ) async {
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await login(tester);
-    await tester.ensureVisible(find.text('09:00'));
-    await tester.tap(find.text('09:00'));
-    await tester.pumpAndSettle();
-    final button = find.text('BOOKING 1 JAM • Rp 250.000');
-    await tester.ensureVisible(button);
-    await tester.tap(button);
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Booking'));
-    await tester.pumpAndSettle();
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.person).last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Notifikasi'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Menunggu pembayaran'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Batalkan booking'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Batalkan booking'));
-    await tester.pumpAndSettle();
-    expect(find.text('Status: Dibatalkan'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    expect(find.text('Dibatalkan'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.byIcon(Icons.history));
-    await tester.pumpAndSettle();
-    expect(find.textContaining('Dibatalkan'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Admin manages bookings, slots and prices without a database', (
-    tester,
-  ) async {
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await openLogin(tester);
-    tester.view.physicalSize = const Size(360, 800);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Masuk admin'));
-    await tester.tap(find.text('Masuk admin'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), 'admin');
-    await tester.enterText(find.byType(TextFormField).at(1), 'wrong');
-    await tester.tap(find.text('Masuk dashboard'));
-    await tester.pumpAndSettle();
-    expect(find.text('Username atau password tidak sesuai'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField).at(1), 'admin123');
-    await tester.tap(find.text('Masuk dashboard'));
-    await tester.pumpAndSettle();
-    expect(find.text('Ringkasan pengelolaan lapangan'), findsOneWidget);
-    await tester.ensureVisible(find.text('Kelola booking'));
-    await tester.tap(find.text('Kelola booking'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.textContaining('DEMO-001'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Konfirmasi booking'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Ya, lanjutkan'));
-    await tester.pumpAndSettle();
-    expect(find.text('Status: Terkonfirmasi'), findsOneWidget);
-    await tester.pageBack();
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Jadwal'));
-    await tester.pumpAndSettle();
-    expect(tester.widget<Switch>(find.byType(Switch).first).onChanged, isNull);
-    await tester.tap(find.byType(Switch).at(1));
-    await tester.pumpAndSettle();
-    expect(find.text('Ditutup admin'), findsOneWidget);
-    await tester.tap(find.text('Pelanggan'));
-    await tester.pumpAndSettle();
-    expect(find.text('Budi'), findsOneWidget);
-    expect(find.text('Sinta'), findsOneWidget);
-    await tester.enterText(find.byType(TextField).first, 'Sinta');
-    await tester.pumpAndSettle();
-    expect(find.text('Budi'), findsNothing);
-    await tester.tap(find.text('Pengaturan'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextFormField).at(0), '300000');
-    await tester.tap(find.text('Simpan harga'));
-    await tester.pumpAndSettle();
-    expect(find.text('Harga berhasil disimpan'), findsOneWidget);
-    await tester.tap(find.byTooltip('Keluar admin'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, 'Keluar'));
-    await tester.pumpAndSettle();
-    expect(find.text('LOGIN'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField).at(0), '081234567890');
-    await tester.enterText(find.byType(TextFormField).at(1), 'password');
-    await tester.tap(find.text('LOGIN'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('11:00'));
-    await tester.tap(find.text('11:00'));
-    await tester.pumpAndSettle();
-    expect(find.text('BOOKING 1 JAM • Rp 300.000'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  test(
-    'Admin closure rejects booking and price edits preserve existing totals',
-    () {
-      final data = DemoData();
-      final date = DateTime(2026, 10, 20);
-      final booking = data.createBooking(date, ['08:00'])!;
-      data.dayPrice = 300000;
-      expect(booking.total, 250000);
-      data.toggleSlot(date, '09:00');
-      expect(data.createBooking(date, ['09:00']), isNull);
-      data.toggleSlot(date, '09:00');
-      expect(data.createBooking(date, ['09:00'])!.total, 300000);
+  testWidgets(
+    'Login validates email and rejects invalid password through backend',
+    (tester) async {
+      final api = CustomerApi();
+      await openLogin(tester, api: api);
+      await tester.tap(find.text('LOGIN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Masukkan email yang valid'), findsOneWidget);
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'pemain@example.com',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), 'wrongpass');
+      await tester.tap(find.text('LOGIN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Email atau password tidak sesuai.'), findsOneWidget);
+      expect(api.loggedIn, isFalse);
+      await tester.enterText(find.byType(TextFormField).at(1), 'password');
+      await tester.tap(find.text('LOGIN'));
+      await tester.pumpAndSettle();
+      expect(find.text('Pilih Tanggal'), findsOneWidget);
+      expect(api.loggedIn, isTrue);
     },
   );
-
-  test('Booking prevents overlapping slots and cancellation frees them', () {
-    final state = DemoData();
-    final now = DateTime.now();
-    final date = DateTime(now.year, now.month, now.day);
-    final booking = state.createBooking(date, ['08:00', '19:00'])!;
-    expect(booking.total, 600000);
-    expect(state.createBooking(date, ['08:00']), isNull);
-    state.cancel(booking);
-    expect(booking.isHistory, isTrue);
-    expect(state.occupied(date, '08:00'), isFalse);
-    expect(state.createBooking(date, ['08:00']), isNotNull);
-    state.signOut();
-    expect(state.bookings, isEmpty);
-  });
+  testWidgets(
+    'Unconfigured application cannot bypass customer authentication',
+    (tester) async {
+      await openLogin(tester);
+      await tester.enterText(
+        find.byType(TextFormField).at(0),
+        'pemain@example.com',
+      );
+      await tester.enterText(find.byType(TextFormField).at(1), 'password');
+      await tester.tap(find.text('LOGIN'));
+      await tester.pumpAndSettle();
+      expect(
+        find.textContaining('Konfigurasi Supabase belum diisi'),
+        findsOneWidget,
+      );
+      expect(find.text('Pilih Tanggal'), findsNothing);
+      await tester.ensureVisible(find.text('Masuk admin'));
+      await tester.tap(find.text('Masuk admin'));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Masuk dashboard'),
+            )
+            .onPressed,
+        isNull,
+      );
+    },
+  );
+  test(
+    'Failed booking retry keeps idempotency key and only caches server success',
+    () async {
+      final api = CustomerApi()..failCreate = true;
+      final state = DemoData(bookingApi: api);
+      final date = DateTime(2030, 1, 1);
+      await expectLater(
+        state.createBooking(date, ['08:00']),
+        throwsA(isA<BookingApiException>()),
+      );
+      final firstId = api.requestId;
+      expect(state.bookings, isEmpty);
+      api.failCreate = false;
+      final booking = await state.createBooking(date, ['08:00']);
+      expect(api.requestId, firstId);
+      expect(state.bookings.single.id, booking.id);
+      await state.cancel(booking);
+      expect(booking.status, BookingStatus.cancelled);
+      await state.signOut();
+      expect(state.bookings, isEmpty);
+    },
+  );
+  testWidgets(
+    'Submitted transfer stays pending and cannot be confirmed by customer',
+    (tester) async {
+      final state = DemoData(bookingApi: CustomerApi());
+      await state.loadSettings();
+      final booking = FieldBooking(
+        id: 'SB-TEST',
+        date: DateTime(2030),
+        hours: ['08:00'],
+        paymentStatus: 'submitted',
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PaymentPage(data: state, booking: booking),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Menunggu verifikasi admin'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Unggah bukti transfer'),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(booking.status, BookingStatus.pending);
+    },
+  );
 }

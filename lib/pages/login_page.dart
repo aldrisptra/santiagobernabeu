@@ -5,6 +5,8 @@ import 'home_page.dart';
 import 'admin_login_page.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
+import '../services/booking_api.dart';
+import 'verify_email_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key, required this.data});
@@ -19,6 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   final _phone = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
+  bool _busy = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -27,14 +31,25 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     if (!_form.currentState!.validate()) return;
-    widget.data.signIn(_phone.text.trim());
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => HomePage(data: widget.data)),
-      (_) => false,
-    );
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.data.signIn(_phone.text.trim(), _password.text);
+      if (!mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => HomePage(data: widget.data)),
+        (_) => false,
+      );
+    } on BookingApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -74,11 +89,11 @@ class _LoginPageState extends State<LoginPage> {
                               const SizedBox(height: 24),
                               TextFormField(
                                 controller: _phone,
-                                keyboardType: TextInputType.phone,
+                                keyboardType: TextInputType.emailAddress,
                                 decoration: const InputDecoration(
-                                  labelText: 'Nomor Telepon',
+                                  labelText: 'Email',
                                 ),
-                                validator: phoneValidator,
+                                validator: emailValidator,
                               ),
                               const SizedBox(height: 16),
                               TextFormField(
@@ -107,8 +122,9 @@ class _LoginPageState extends State<LoginPage> {
                                     onPressed: () => Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ForgotPasswordPage(),
+                                        builder: (_) => ForgotPasswordPage(
+                                          data: widget.data,
+                                        ),
                                       ),
                                     ),
                                     child: const Text('Lupa password?'),
@@ -116,10 +132,18 @@ class _LoginPageState extends State<LoginPage> {
                                 ],
                               ),
                               const SizedBox(height: 20),
+                              if (_error != null)
+                                Text(
+                                  _error!,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                                ),
+                              if (_busy) const LinearProgressIndicator(),
                               SizedBox(
                                 width: double.infinity,
                                 child: FilledButton(
-                                  onPressed: _login,
+                                  onPressed: _busy ? null : _login,
                                   child: const Text('LOGIN'),
                                 ),
                               ),
@@ -133,6 +157,31 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                                 child: const Text(
                                   'Belum memiliki akun? Daftar',
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _busy
+                                    ? null
+                                    : () {
+                                        final error = emailValidator(
+                                          _phone.text,
+                                        );
+                                        if (error != null) {
+                                          setState(() => _error = error);
+                                          return;
+                                        }
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => VerifyEmailPage(
+                                              data: widget.data,
+                                              email: _phone.text.trim(),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                child: const Text(
+                                  'Verifikasi email yang sudah didaftarkan',
                                 ),
                               ),
                               TextButton.icon(

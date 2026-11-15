@@ -15,7 +15,7 @@ class _AdminCustomersPageState extends State<AdminCustomersPage> {
   Widget build(BuildContext context) {
     final customers = <String, String>{};
     final counts = <String, int>{};
-    for (final booking in widget.data.bookings) {
+    for (final booking in widget.data.adminBookings) {
       customers[booking.customerPhone] = booking.customerName;
       counts[booking.customerPhone] = (counts[booking.customerPhone] ?? 0) + 1;
     }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/demo_data.dart';
 import 'notifications_page.dart';
 import 'booking_detail_page.dart';
+import '../services/booking_api.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key, required this.data, required this.onChanged});
@@ -37,15 +38,39 @@ class _BerandaPageState extends State<BerandaPage> {
   int _tanggalDipilih = 0;
   // User bisa memilih lebih dari satu jam (tap lagi untuk membatalkan).
   final Set<String> _jamDipilih = {};
+  bool _loading = true, _saving = false;
+  String? _error;
+  int _loadRevision = 0;
+
+  Future<void> _load() async {
+    final revision = ++_loadRevision;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      await widget.data.loadSettings();
+      await widget.data.loadAvailability(_tanggal[_tanggalDipilih]);
+    } on BookingApiException catch (e) {
+      if (mounted && revision == _loadRevision) {
+        setState(() => _error = e.message);
+      }
+    } finally {
+      if (mounted && revision == _loadRevision) {
+        setState(() => _loading = false);
+      }
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    final hariIni = DateTime.now();
+    final hariIni = DateTime.now().toUtc().add(const Duration(hours: 8));
     _tanggal = List.generate(
       7,
       (i) => DateTime(hariIni.year, hariIni.month, hariIni.day + i),
     );
+    _load();
   }
 
   int _hargaPerJam(String jam) {
@@ -100,13 +125,21 @@ class _BerandaPageState extends State<BerandaPage> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
+          if (_loading || _saving) const LinearProgressIndicator(),
+          if (_error != null) ...[
+            Text(_error!),
+            TextButton(onPressed: _load, child: const Text('Coba lagi')),
+          ],
           _buildJadwal(),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: _jamDipilih.isEmpty ? null : _konfirmasiBooking,
+              onPressed:
+                  _jamDipilih.isEmpty || _loading || _saving || _error != null
+                  ? null
+                  : _konfirmasiBooking,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
@@ -265,6 +298,7 @@ class _BerandaPageState extends State<BerandaPage> {
                 _tanggalDipilih = index;
                 _jamDipilih.clear();
               });
+              _load();
             },
             child: Container(
               width: 60,
@@ -331,8 +365,16 @@ class _BerandaPageState extends State<BerandaPage> {
   }
 
   Widget _buildSlotJam(String jam) {
+    final date = _tanggal[_tanggalDipilih];
+    final past = DateTime.utc(
+      date.year,
+      date.month,
+      date.day,
+      int.parse(jam.substring(0, 2)),
+    ).subtract(const Duration(hours: 8)).isBefore(DateTime.now().toUtc());
     // Contoh: hanya hari ini yang punya slot terisi.
     final terisi =
+        past ||
         widget.data.blocked(_tanggal[_tanggalDipilih], jam) ||
         widget.data.occupied(_tanggal[_tanggalDipilih], jam);
     final dipilih = _jamDipilih.contains(jam);
@@ -348,7 +390,9 @@ class _BerandaPageState extends State<BerandaPage> {
     }
 
     return GestureDetector(
-      onTap: terisi ? null : () => _toggleJam(jam),
+      onTap: terisi || _loading || _saving || _error != null
+          ? null
+          : () => _toggleJam(jam),
       child: Container(
         height: 64,
         decoration: BoxDecoration(
@@ -370,7 +414,11 @@ class _BerandaPageState extends State<BerandaPage> {
               ),
             ),
             Text(
-              terisi ? 'Terisi' : 'Tersedia',
+              past
+                  ? 'Sudah lewat'
+                  : terisi
+                  ? 'Terisi'
+                  : 'Tersedia',
               style: TextStyle(color: fg, fontSize: 12),
             ),
           ],
@@ -400,24 +448,31 @@ class _BerandaPageState extends State<BerandaPage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final booking = widget.data.createBooking(tgl, jam);
-              if (booking == null) {
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Jam sudah terisi. Pilih jadwal lain.'),
+              if (_saving) return;
+              setState(() => _saving = true);
+              try {
+                final booking = await widget.data.createBooking(tgl, jam);
+                if (!mounted) return;
+                setState(() => _jamDipilih.clear());
+                await Navigator.push(
+                  this.context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        BookingDetailPage(data: widget.data, booking: booking),
                   ),
                 );
-                return;
+                if (mounted) widget.onChanged();
+              } on BookingApiException catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(this.context)
+                      .showSnackBar(SnackBar(content: Text(e.message)));
+                }
+              } finally {
+                if (mounted) {
+                  setState(() => _saving = false);
+                  _load();
+                }
               }
-              setState(() => _jamDipilih.clear());
-              await Navigator.push(
-                this.context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      BookingDetailPage(data: widget.data, booking: booking),
-                ),
-              );
-              if (mounted) widget.onChanged();
             },
             child: const Text('Booking'),
           ),

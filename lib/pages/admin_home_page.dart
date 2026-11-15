@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../data/demo_data.dart';
+import '../services/booking_api.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_booking_page.dart';
 import 'admin_schedule_page.dart';
 import 'admin_customers_page.dart';
 import 'admin_settings_page.dart';
+import 'login_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key, required this.data});
@@ -16,11 +18,13 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage> {
   int _index = 0;
+  bool _loggingOut = false;
   void _refresh() {
     setState(() {});
   }
 
   Future<void> _logout() async {
+    if (_loggingOut) return;
     final exit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -38,7 +42,27 @@ class _AdminHomePageState extends State<AdminHomePage> {
         ],
       ),
     );
-    if (exit == true && mounted) Navigator.pop(context);
+    if (exit != true || !mounted) return;
+    setState(() => _loggingOut = true);
+    try {
+      await widget.data.signOutAdmin();
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => LoginPage(data: widget.data)),
+          (_) => false,
+        );
+      }
+    } on BookingApiException catch (error) {
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => LoginPage(data: widget.data)),
+        (_) => false,
+      );
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   @override
@@ -49,7 +73,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       actions: [
         IconButton(
           tooltip: 'Keluar admin',
-          onPressed: _logout,
+          onPressed: _loggingOut ? null : _logout,
           icon: const Icon(Icons.logout),
         ),
       ],

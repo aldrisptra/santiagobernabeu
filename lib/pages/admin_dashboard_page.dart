@@ -35,7 +35,7 @@ class AdminDashboardPage extends StatelessWidget {
     int pending = 0;
     int confirmed = 0;
     int revenue = 0;
-    for (final booking in data.bookings) {
+    for (final booking in data.adminBookings) {
       if (booking.status == BookingStatus.pending) pending++;
       if (booking.status == BookingStatus.confirmed) {
         confirmed++;
@@ -58,7 +58,7 @@ class AdminDashboardPage extends StatelessWidget {
             children: [
               _summary(
                 'Total booking',
-                '${data.bookings.length}',
+                '${data.adminBookings.length}',
                 Icons.receipt_long,
               ),
               _summary('Menunggu', '$pending', Icons.pending_actions),
@@ -96,11 +96,11 @@ class AdminDashboardPage extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text(
-            'Booking terbaru',
+            'Daftar booking',
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-          if (data.bookings.isEmpty) const Text('Belum ada booking.'),
-          for (final booking in data.bookings.take(3))
+          if (data.adminBookings.isEmpty) const Text('Belum ada booking.'),
+          for (final booking in data.adminBookings.take(3))
             Card(
               child: ListTile(
                 title: Text(booking.customerName),

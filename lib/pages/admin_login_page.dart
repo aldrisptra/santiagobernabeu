@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/demo_data.dart';
+import '../services/booking_api.dart';
 import 'admin_home_page.dart';
 
 class AdminLoginPage extends StatefulWidget {
@@ -12,23 +13,34 @@ class AdminLoginPage extends StatefulWidget {
 
 class _AdminLoginPageState extends State<AdminLoginPage> {
   final _form = GlobalKey<FormState>();
-  final _username = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   String? _error;
+  bool _submitting = false;
   @override
   void dispose() {
-    _username.dispose();
+    _email.dispose();
     _password.dispose();
     super.dispose();
   }
 
-  void _login() {
-    if (!_form.currentState!.validate()) return;
-    if (_username.text.trim() != 'admin' || _password.text != 'admin123') {
-      setState(() => _error = 'Username atau password tidak sesuai');
+  Future<void> _login() async {
+    if (_submitting || !_form.currentState!.validate()) return;
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await widget.data.signInAdmin(_email.text.trim(), _password.text);
+    } on BookingApiException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = error.message;
+      });
       return;
     }
-    widget.data.prepareAdminDemo();
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => AdminHomePage(data: widget.data)),
@@ -43,13 +55,14 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.admin_panel_settings_outlined,
-                size: 72,
-                color: Colors.blue,
+              Image.asset(
+                'assets/images/logo.png',
+                height: 110,
+                fit: BoxFit.contain,
+                semanticLabel: 'Logo Santiago Bernabéu',
               ),
             ],
           ),
@@ -59,22 +72,36 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
-          const Text('Masukkan username dan password admin.'),
+          const Text('Masukkan email dan password akun admin.'),
+          if (!widget.data.bookingApi.isConfigured) ...[
+            const SizedBox(height: 12),
+            Text(
+              widget.data.bookingApi.configurationError ?? 'Koneksi Supabase belum diatur. Ikuti panduan konfigurasi di README.',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
           const SizedBox(height: 24),
           Form(
             key: _form,
             child: Column(
               children: [
                 TextFormField(
-                  controller: _username,
-                  decoration: const InputDecoration(
-                    labelText: 'Username admin',
-                  ),
-                  validator: requiredText,
+                  controller: _email,
+                  enabled: !_submitting,
+                  keyboardType: TextInputType.emailAddress,
+                  autofillHints: const [AutofillHints.email],
+                  decoration: const InputDecoration(labelText: 'Email admin'),
+                  validator: (value) =>
+                      RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+                          .hasMatch(value?.trim() ?? '')
+                      ? null
+                      : 'Masukkan email yang valid',
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _password,
+                  enabled: !_submitting,
+                  autofillHints: const [AutofillHints.password],
                   obscureText: true,
                   decoration: const InputDecoration(
                     labelText: 'Password admin',
@@ -88,8 +115,13 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: _login,
-                    child: const Text('Masuk dashboard'),
+                    onPressed:
+                        _submitting || !widget.data.bookingApi.isConfigured
+                        ? null
+                        : _login,
+                    child: Text(
+                      _submitting ? 'Memeriksa akun...' : 'Masuk dashboard',
+                    ),
                   ),
                 ),
               ],

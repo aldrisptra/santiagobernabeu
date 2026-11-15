@@ -1,9 +1,81 @@
 import '../models/booking.dart';
+import '../services/booking_api.dart';
 
-// Data demo dibagikan ke halaman lewat constructor, belum memakai database.
+import 'dart:math';
+
+// Shared state; durable data and authorization live in Supabase.
 class DemoData {
+  DemoData({BookingApi? bookingApi}) : bookingApi = bookingApi ?? BookingApi();
+
+  final BookingApi bookingApi;
+  final Map<String, FieldBooking> _apiBookings = {};
+  int _bookingRevision = 0;
+  int _adminSessionRevision = 0;
+  int _customerSessionRevision = 0;
+  bool hasLoadedApiBookings = false;
+  int get apiBookingCount => _apiBookings.length;
+  List<FieldBooking> get adminBookings =>
+      List.unmodifiable(_apiBookings.values);
+
+  bool isApiBooking(FieldBooking booking) =>
+      _apiBookings.containsKey(booking.id);
+
+  Future<void> loadAdminBookings() async {
+    final revision = ++_bookingRevision;
+    final bookings = await bookingApi.fetchBookings();
+    // Abaikan respons lama yang tiba setelah perubahan status atau logout.
+    if (revision != _bookingRevision) return;
+    _apiBookings
+      ..clear()
+      ..addEntries(bookings.map((booking) => MapEntry(booking.id, booking)));
+    hasLoadedApiBookings = true;
+  }
+
+  Future<void> changeAdminBookingStatus(
+    FieldBooking booking,
+    BookingStatus status,
+  ) async {
+    if (isApiBooking(booking)) {
+      final sessionRevision = _adminSessionRevision;
+      _bookingRevision++;
+      final updated = await bookingApi.updateStatus(booking.id, status);
+      if (sessionRevision != _adminSessionRevision) return;
+      _bookingRevision++;
+      booking.status = updated.status;
+      _apiBookings[booking.id] = updated;
+    } else {
+      throw const BookingApiException(
+        'Muat ulang booking sebelum mengubah status.',
+      );
+    }
+  }
+
+  Future<void> signInAdmin(String email, String password) async {
+    await bookingApi.signInAdmin(email: email, password: password);
+    _clearAdminBookings();
+  }
+
+  Future<void> signOutAdmin() async {
+    _clearAdminBookings();
+    try {
+      await bookingApi.signOutAdmin();
+    } finally {
+      _clearAdminBookings();
+    }
+  }
+
+  void _clearAdminBookings() {
+    _adminSessionRevision++;
+    _bookingRevision++;
+    _apiBookings.clear();
+    hasLoadedApiBookings = false;
+  }
+
+  void dispose() => bookingApi.close();
+
   String name = 'Pemain';
   String phone = '';
+  String bankName = '', bankAccount = '', bankHolder = '';
   bool signedIn = false;
   int dayPrice = 250000;
   int nightPrice = 350000;
@@ -31,69 +103,87 @@ class DemoData {
     return blockedSlots[bookingDate(date)]?.contains(hour) ?? false;
   }
 
-  void toggleSlot(DateTime date, String hour) {
-    final slots = blockedSlots.putIfAbsent(bookingDate(date), () => {});
-    if (!slots.remove(hour)) slots.add(hour);
-  }
-
-  // Contoh data untuk mencoba UI admin tanpa database.
-  void prepareAdminDemo() {
-    if (_bookings.isNotEmpty) return;
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    _bookings.addAll([
-      FieldBooking(
-        id: 'DEMO-001',
-        date: today,
-        hours: ['08:00'],
-        customerName: 'Budi',
-        customerPhone: '081234567801',
-        dayPrice: dayPrice,
-        nightPrice: nightPrice,
-      ),
-      FieldBooking(
-        id: 'DEMO-002',
-        date: today.add(const Duration(days: 1)),
-        hours: ['19:00'],
-        customerName: 'Sinta',
-        customerPhone: '081234567802',
-        dayPrice: dayPrice,
-        nightPrice: nightPrice,
-      )..status = BookingStatus.confirmed,
-      FieldBooking(
-        id: 'DEMO-003',
-        date: today.subtract(const Duration(days: 1)),
-        hours: ['09:00'],
-        customerName: 'Budi',
-        customerPhone: '081234567801',
-        dayPrice: dayPrice,
-        nightPrice: nightPrice,
-      )..status = BookingStatus.confirmed,
-    ]);
+  Future<void> toggleSlot(DateTime date, String hour) async {
+    await bookingApi.setSlotClosed(date, hour, !blocked(date, hour));
+    await loadAvailability(date);
   }
 
   final List<FieldBooking> _bookings = [];
   List<FieldBooking> get bookings => List.unmodifiable(_bookings);
-  void signIn(String number, {String? displayName}) {
-    phone = number;
-    if (displayName != null) name = displayName;
+  Future<void> signIn(String email, String password) async {
+    await bookingApi.signInCustomer(email, password);
+    await loadCustomer();
+  }
+
+  Future<void> loadCustomer() async {
+    final revision = _customerSessionRevision;
+    final profile = await bookingApi.loadProfile();
+    if (revision != _customerSessionRevision) return;
+    name = profile['name'] as String;
+    phone = profile['phone'] as String;
+    await refreshCustomer();
+    if (revision != _customerSessionRevision) return;
     signedIn = true;
   }
 
-  void signOut() {
-    signedIn = false;
-    name = 'Pemain';
-    phone = '';
-    _bookings.clear();
+  Future<void> refreshCustomer() async {
+    final revision = _customerSessionRevision;
+    final records = await bookingApi.fetchMyBookings();
+    await loadSettings();
+    if (revision != _customerSessionRevision) return;
+    _bookings
+      ..clear()
+      ..addAll(records);
   }
 
-  void updateProfile(String newName, String number) {
+  Future<void> loadSettings() async {
+    final settings = await bookingApi.fetchSettings();
+    dayPrice = settings['day_price'] as int;
+    nightPrice = settings['night_price'] as int;
+    bankName = settings['bank_name'] as String;
+    bankAccount = settings['bank_account'] as String;
+    bankHolder = settings['bank_holder'] as String;
+  }
+
+  final Map<String, Set<String>> _occupiedSlots = {};
+  Future<void> loadAvailability(DateTime date) async {
+    final slots = await bookingApi.availability(date);
+    blockedSlots[bookingDate(date)] = {
+      for (final s in slots)
+        if (s['closed'] == true) s['hour'] as String,
+    };
+    _occupiedSlots[bookingDate(date)] = {
+      for (final s in slots)
+        if (s['occupied'] == true) s['hour'] as String,
+    };
+  }
+
+  Future<void> signOut() async {
+    _customerSessionRevision++;
+    try {
+      await bookingApi.signOutAdmin();
+    } finally {
+      _clearAdminBookings();
+      signedIn = false;
+      name = 'Pemain';
+      phone = '';
+      _bookings.clear();
+      blockedSlots.clear();
+      _occupiedSlots.clear();
+      _pendingRequest = null;
+      _pendingSelection = null;
+    }
+  }
+
+  Future<void> updateProfile(String newName, String number) async {
+    await bookingApi.saveProfile(newName, number);
     name = newName;
     phone = number;
   }
 
   bool occupied(DateTime date, String hour) {
-    for (final booking in _bookings) {
+    if (_occupiedSlots[bookingDate(date)]?.contains(hour) ?? false) return true;
+    for (final booking in adminBookings) {
       if (booking.date == date &&
           booking.status != BookingStatus.cancelled &&
           booking.hours.contains(hour)) {
@@ -103,31 +193,46 @@ class DemoData {
     return false;
   }
 
-  FieldBooking? createBooking(DateTime date, List<String> hours) {
-    if (hours.isEmpty) return null;
-    for (final hour in hours) {
-      if (occupied(date, hour) || blocked(date, hour)) return null;
+  String? _pendingRequest, _pendingSelection;
+  Future<FieldBooking> createBooking(DateTime date, List<String> hours) async {
+    final selection = '${bookingDate(date)}:${hours.join(',')}';
+    if (_pendingSelection != selection || _pendingRequest == null) {
+      final random = Random.secure();
+      final bytes = List.generate(16, (_) => random.nextInt(256));
+      bytes[6] = (bytes[6] & 15) | 64;
+      bytes[8] = (bytes[8] & 63) | 128;
+      final h = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+      _pendingRequest =
+          '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-${h.substring(16, 20)}-${h.substring(20)}';
+      _pendingSelection = selection;
     }
-    final booking = FieldBooking(
-      id: 'SB-${DateTime.now().microsecondsSinceEpoch}',
-      customerName: name,
-      customerPhone: phone,
-      dayPrice: dayPrice,
-      nightPrice: nightPrice,
-      date: date,
-      hours: List.unmodifiable(hours),
+    final booking = await bookingApi.createCustomerBooking(
+      date,
+      hours,
+      _pendingRequest!,
     );
+    _pendingRequest = null;
+    _pendingSelection = null;
+    _bookings.removeWhere((b) => b.id == booking.id);
     _bookings.insert(0, booking);
     return booking;
   }
 
-  void confirmPayment(FieldBooking booking) {
-    if (booking.status != BookingStatus.pending) return;
-    booking.status = BookingStatus.confirmed;
+  void applyBooking(FieldBooking target, FieldBooking updated) {
+    target.status = updated.status;
+    target.paymentPath = updated.paymentPath;
+    target.paymentStatus = updated.paymentStatus;
+    target.paymentNote = updated.paymentNote;
+    final index = _bookings.indexWhere((b) => b.id == updated.id);
+    if (index >= 0) _bookings[index] = updated;
+    if (_apiBookings.containsKey(updated.id)) {
+      _apiBookings[updated.id] = updated;
+    }
   }
 
-  void cancel(FieldBooking booking) {
-    booking.status = BookingStatus.cancelled;
+  Future<void> cancel(FieldBooking booking) async {
+    applyBooking(booking, await bookingApi.cancelCustomerBooking(booking.id));
+    await loadAvailability(booking.date);
   }
 }
 
@@ -148,3 +253,8 @@ String? phoneValidator(String? value) =>
     RegExp(r'^\+?[0-9]{9,15}$').hasMatch(value?.trim() ?? '')
     ? null
     : 'Masukkan nomor telepon yang valid';
+
+String? emailValidator(String? value) =>
+    RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value?.trim() ?? '')
+    ? null
+    : 'Masukkan email yang valid';

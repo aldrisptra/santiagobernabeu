@@ -46,3 +46,11 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Konfigurasi project lokal (contoh konfigurasi tetap masuk repository).
+/config/supabase.local.json
+/android/key.properties
+/android/.kotlin/
+*.jks
+*.keystore
+/supabase/.temp/

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../data/demo_data.dart';
+import '../services/booking_api.dart';
 
 class AdminSettingsPage extends StatefulWidget {
   const AdminSettingsPage({
@@ -16,6 +17,33 @@ class AdminSettingsPage extends StatefulWidget {
 
 class _AdminSettingsPageState extends State<AdminSettingsPage> {
   final _form = GlobalKey<FormState>();
+  bool _busy = true;
+  String? _error;
+  final _bank = TextEditingController(),
+      _account = TextEditingController(),
+      _holder = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      await widget.data.loadSettings();
+      if (!mounted) return;
+      _day.text = widget.data.dayPrice.toString();
+      _night.text = widget.data.nightPrice.toString();
+      _bank.text = widget.data.bankName;
+      _account.text = widget.data.bankAccount;
+      _holder.text = widget.data.bankHolder;
+    } on BookingApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   late final _day = TextEditingController(
     text: widget.data.dayPrice.toString(),
   );
@@ -26,6 +54,9 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   void dispose() {
     _day.dispose();
     _night.dispose();
+    _bank.dispose();
+    _account.dispose();
+    _holder.dispose();
     super.dispose();
   }
 
@@ -37,13 +68,31 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     return null;
   }
 
-  void _save() {
+  Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    widget.data.dayPrice = int.parse(_day.text);
-    widget.data.nightPrice = int.parse(_night.text);
-    widget.onChanged();
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Harga berhasil disimpan')));
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await widget.data.bookingApi.saveSettings({
+        'day_price': int.parse(_day.text),
+        'night_price': int.parse(_night.text),
+        'bank_name': _bank.text.trim(),
+        'bank_account': _account.text.trim(),
+        'bank_holder': _holder.text.trim(),
+      });
+      await widget.data.loadSettings();
+      if (!mounted) return;
+      widget.onChanged();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Harga berhasil disimpan')));
+    } on BookingApiException catch (e) {
+      if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -61,6 +110,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
           'Harga berlaku untuk booking baru. Total booking yang sudah dibuat tidak berubah.',
         ),
         const SizedBox(height: 24),
+        if (_busy) const LinearProgressIndicator(),
+        if (_error != null) Text(_error!),
         Form(
           key: _form,
           child: Column(
@@ -85,10 +136,30 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                 validator: _validatePrice,
               ),
               const SizedBox(height: 24),
+              TextFormField(
+                controller: _bank,
+                decoration: const InputDecoration(labelText: 'Nama bank'),
+                validator: requiredText,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _account,
+                decoration: const InputDecoration(labelText: 'Nomor rekening'),
+                validator: requiredText,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _holder,
+                decoration: const InputDecoration(
+                  labelText: 'Nama pemilik rekening',
+                ),
+                validator: requiredText,
+              ),
+              const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _save,
+                  onPressed: _busy ? null : _save,
                   child: const Text('Simpan harga'),
                 ),
               ),
